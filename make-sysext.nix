@@ -1,11 +1,31 @@
-{ name, packages }:
+{ name, packages, osId, osVersion ? null }:
 
 { runCommand, lib }:
-runCommand "build-sysext-${name}" { } (
-  let
-    doLink = { drv, prefix ? "usr", path, destpath ? null }:
-      "do_link ${prefix} ${drv} ${path}" + lib.optionalString (destpath != null) " ${destpath}";
-  in
+
+let
+  metadata = {
+    SYSEXT_LEVEL = "1.0";
+    ID = osId;
+    VERSION_ID = osVersion;
+  };
+
+  metadataFile = lib.concatStringsSep "\n"
+    (lib.mapAttrsToList (k: v: "${k}=${v}")
+      (lib.filterAttrs (_: v: v != null)
+        metadata));
+
+  doLink = { drv, prefix ? "usr", path, destpath ? null }:
+    "do_link ${prefix} ${drv} ${path}" + lib.optionalString (destpath != null) " ${destpath}";
+
+  supportedPaths = [ "usr" "opt" ];
+in
+
+runCommand "build-sysext-${name}"
+{
+  passthru.name = name;
+  inherit metadataFile;
+  passAsFile = [ "metadataFile" ];
+}
   ''
     do_link () {
       local prefix="$1"
@@ -20,11 +40,17 @@ runCommand "build-sysext-${name}" { } (
       destfile="$out/$prefix/$destpath"
       destdir="$(dirname -- "$destfile")"
 
-      install -d -m 755 "$destdir"
+      mkdir -pv "$destdir"
       ln -s -T -v "$srcfile" "$destfile"
     }
 
-    ${builtins.concatStringsSep "\n" (map doLink packages)}
+    ${lib.concatStringsSep "\n" (map doLink packages)}
+
+    # bake metadata into the structure
+    if ! [ -f $out/usr/lib/extension-release.d/extension-release."${name}" ]; then
+      mkdir -p $out/usr/lib/extension-release.d
+      cat "$metadataFilePath" > $out/usr/lib/extension-release.d/extension-release."${name}"
+    fi
 
     broken=$(cd $out; find . -type l -xtype l)
     if [ -n "$broken" ]; then
@@ -33,7 +59,7 @@ runCommand "build-sysext-${name}" { } (
       exit 1
     fi
 
-    unexpected=$(cd $out; find . -maxdepth 1 -mindepth 1 '!' '(' -type d -name "usr" -o -type d -name "opt" ')')
+    unexpected=$(cd $out; find . -maxdepth 1 -mindepth 1 '!' '(' ${lib.concatStringsSep " -o " (map (p: "-type d -name \"${p}\"") supportedPaths)} ')')
     if [ -n "$unexpected" ]; then
       echo "found unexpected files in output:"
       echo "$unexpected"
@@ -46,4 +72,3 @@ runCommand "build-sysext-${name}" { } (
       exit 1
     fi
   ''
-)
