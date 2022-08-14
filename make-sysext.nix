@@ -20,7 +20,7 @@ let
   supportedPaths = [ "usr" "opt" ];
 in
 
-runCommand "build-sysext-${name}"
+runCommand "sysext-${name}"
 {
   passthru.name = name;
   inherit metadataFile;
