@@ -63,7 +63,7 @@ runCommand "build-sysext-${name}"
     if [ -n "$unexpected" ]; then
       echo "found unexpected files in output:"
       echo "$unexpected"
-      echo "note that only 'usr' and 'opt' are supported (for now)"
+      echo "note that only ${lib.concatStringsSep ", " (map (p: "'${p}'" supportedPaths))} are supported (for now)"
       exit 1
     fi
 
