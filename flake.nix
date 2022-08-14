@@ -25,11 +25,17 @@
         in
         {
           reshade-shaders = pkgs.callPackage ./examples/reshade-shaders.nix { };
-          exampleExt = pkgs.callPackage ./examples/steamos-utils.nix {
+
+          exampleExtSteamOS = pkgs.callPackage ./examples/steamos-utils.nix {
             inherit (self.lib.${system}) mkSysExt;
             inherit (pkgs.linuxPackages) x86_energy_perf_policy;
             inherit (self.packages.${system}) reshade-shaders;
             osVersion = "3.3.1"; # required by systemd-sysext. See /etc/os-release
+          };
+
+          exampleExtUbuntu = pkgs.callPackage ./examples/ubuntu-utils.nix {
+            inherit (self.lib.${system}) mkSysExt;
+            osVersion = "22.04";
           };
         });
     };
