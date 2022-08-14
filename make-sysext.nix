@@ -40,5 +40,10 @@ runCommand "build-sysext-${name}" { } (
       echo "note that only 'usr' and 'opt' are supported (for now)"
       exit 1
     fi
+
+    if [ -f $out/usr/lib/os-release ]; then
+      echo "output cannot contain /usr/lib/os-release"
+      exit 1
+    fi
   ''
 )
